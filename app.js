@@ -1,8 +1,24 @@
+var cookieSession = require("cookie-session");
 var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
+var config = require("./config");
+var mongoose = require("mongoose");
+
+mongoose.connect(config.dbClient, {
+  tls: true,
+  // location of a local .pem file that contains both the client's certificate and key
+  tlsCertificateKeyFile: config.tlsCertificateKeyFile,
+  authMechanism: "MONGODB-X509",
+  authSource: "$external",
+});
+var db = mongoose.connection;
+db.on("error", console.error.bind(console, "connection error:"));
+db.once("open", function () {
+  console.log("db connect");
+});
 
 var indexRouter = require("./routes/index");
 var newsRouter = require("./routes/news");
@@ -20,6 +36,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
+
+app.use(
+  cookieSession({
+    name: "session",
+    keys: config.keySession,
+
+    // Cookie Options
+    maxAge: config.maxAgesession,
+  })
+);
 
 app.use((req, res, next) => {
   res.locals.path = req.path;
